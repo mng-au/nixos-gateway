@@ -2,7 +2,7 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
-{ config, pkgs, ... }:
+{ config, pkgs, hostVars, ... }:
 
 {
   imports =
@@ -19,17 +19,30 @@
 
   # Use latest kernel.
   boot.kernelPackages = pkgs.linuxPackages_latest;
-  # boot.kernelPackages = pkgs.linuxPackages_6_12;
 
   networking.hostName = "gateway-2";
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  networking.networkmanager.enable = false;
+  networking.enableIPv6 = false;
 
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://user:password@proxy:port/";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
+  networking = {
+      interfaces."${hostVars.ifInternet}" = {
+        useDHCP = true;
+      };
 
-  # Enable networking
-  networking.networkmanager.enable = true;
+      interfaces."${hostVars.ifLan1}" = {
+        ipv4.addresses = [{
+          address = "${hostVars.ipLan1}";
+          prefixLength = 24;
+        }];
+      };
+ 
+      interfaces."${hostVars.ifLan2}" = {
+        ipv4.addresses = [{
+          address = "${hostVars.ipLan2}";
+          prefixLength = 22;
+        }];
+      };
+  };
 
   # Set your time zone.
   time.timeZone = "Australia/Sydney";
@@ -73,6 +86,7 @@
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
   # programs.mtr.enable = true;
+ 
   programs.gnupg.agent = {
     enable = true;
     enableSSHSupport = true;
@@ -102,5 +116,4 @@
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "26.05"; # Did you read the comment?
-
 }
