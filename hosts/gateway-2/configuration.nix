@@ -10,6 +10,9 @@
       ./hardware-configuration.nix
     ];
 
+  # Disable original modules of customised modules
+  disabledModules = [ "services/networking/adguardhome.nix" ];
+
   # Boot
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
