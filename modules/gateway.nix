@@ -117,7 +117,7 @@
 
             # Redirect HTTP, HTTPS
             iifname "${hostVars.ifInternet}" tcp dport { 80, 443 } dnat ip to ${hostVars.ipNginx};
-            iifname "${hostVars.ifLan1}" tcp dport { 80, 443 } dnat ip to ${hostVars.ipNginx};
+            iifname "${hostVars.ifLan1}" ip daddr ${hostVars.ipLan1} tcp dport { 80, 443 } dnat ip to ${hostVars.ipNginx};
 
             # Netbird Relay
             iifname "${hostVars.ifInternet}" udp dport { 33080 } dnat ip to ${hostVars.ipNginx};
