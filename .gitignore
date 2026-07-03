@@ -13,3 +13,6 @@ result-*
 
 # IDE files
 .idea
+
+# Secrets
+.sops.yaml
