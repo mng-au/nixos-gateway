@@ -20,6 +20,10 @@
   # Use latest kernel.
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
+  # Set power profile
+  powerManagement.cpuFreqGovernor = "powersave";   
+
+  # Setup network
   networking.hostName = "gateway-2";
   networking.networkmanager.enable = false;
   networking.enableIPv6 = false;
@@ -72,7 +76,7 @@
   users.users."user" = {
     isNormalUser = true;
     description = "user";
-    extraGroups = [ "networkmanager" "wheel" ];
+    extraGroups = [ "wheel" "docker" ];
     packages = with pkgs; [];
   };
 
