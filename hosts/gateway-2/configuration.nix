@@ -2,13 +2,17 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
-{ config, pkgs, hostVars, ... }:
+{ config, pkgs, hostVars, sops, ... }:
 
 {
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
     ];
+
+  # Secrets
+  sops.defaultSopsFile = ../../secrets/vars.yaml;
+  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
   # Disable original modules of customised modules
   disabledModules = [ "services/networking/adguardhome.nix" ];
