@@ -11,7 +11,8 @@
     ];
 
   # Secrets
-  sops.defaultSopsFile = ../../secrets/vars.yaml;
+  sops.validateSopsFiles = false;
+  sops.defaultSopsFile = "/root/.sops/secrets/vars.yaml";
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
   # Disable original modules of customised modules
