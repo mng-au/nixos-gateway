@@ -8,8 +8,6 @@
   };
 
   # Create a adguardhome template with secrets
-  sops.secrets."vars/adguard_user_password" = {};
-  sops.secrets."vars/domain_name" = {};
   sops.templates."AdGuardHome.yaml" = {
     content = ''
 http:
