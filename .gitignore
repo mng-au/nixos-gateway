@@ -17,3 +17,6 @@ result-*
 # Secrets
 .sops.yaml
 secrets/*.yaml
+
+# Ignore .env
+.env
