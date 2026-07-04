@@ -33,7 +33,7 @@
       specialArgs = {
         hostVars = {
             inetIngressSpeedInMB = "500";
-            inetEngressSeeedInMB = "50";
+            inetEgressSpeedInMB = "50";
 
             ifInternet = "enp3s0f0";
             ifLan1 = "enp3s0f1";

@@ -152,7 +152,7 @@
       DEVICE="${hostVars.ifInternet}"
       LINKTYPE=""
       INPUT_SPEED="$((${hostVars.inetIngressSpeedInMB} * 1000 * 97 / 100))kbit"
-      OUTPUT_SPEED="$((${hostVars.inetEngressSeeedInMB} * 1000 * 97 / 100))kbit"
+      OUTPUT_SPEED="$((${hostVars.inetEgressSpeedInMB} * 1000 * 97 / 100))kbit"
 
       interface $DEVICE world bidirectional $LINKTYPE input rate $INPUT_SPEED output rate $OUTPUT_SPEED qdisc cake
         class interactive prio 2 # input commit 20% output commit 10%
