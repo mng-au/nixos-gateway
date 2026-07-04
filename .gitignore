@@ -16,3 +16,4 @@ result-*
 
 # Secrets
 .sops.yaml
+secrets/*.yaml
