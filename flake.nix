@@ -28,6 +28,7 @@
         ./modules/netdata.nix
         ./modules/danted.nix
         ./modules/squid.nix
+        ./modules/nginx.nix
       ];
 
       specialArgs = {
