@@ -92,6 +92,9 @@
             # Drop bad packets
             # ct status invalid drop;
 
+            # Allow Nginx
+            iifname { ${hostVars.ifLan2} } tcp dport { 80, 443 } accept;
+
             # Allow SSH
             iifname != { ${hostVars.ifInternet} } tcp dport 22 accept; # Do not remove
 
