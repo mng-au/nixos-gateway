@@ -25,10 +25,20 @@ let
     "14" = domainEnv 14;
     "15" = domainEnv 15;
 
+    netbird = {
+      name = env "NGINX_DOMAIN_6";
+      dashboard = env "NGINX_DOMAIN_6_DASHBOARD";
+      signal = env "NGINX_DOMAIN_6_SIGNAL";
+      management = env "NGINX_DOMAIN_6_MANAGEMENT";
+      relay = env "NGINX_DOMAIN_6_RELAY";
+    };
+  };
+
   vars = {
     acme_domain = env "ACME_DOMAIN";
     acme_default_email = env "ACME_DEFAULT_EMAIL";
   };
+
   snippets = {
     hsts = pkgs.writeText "nginx_hsts.conf" ''
        # Add HSTS header with preloading to HTTPS requests.
@@ -100,7 +110,6 @@ let
         deny   all;
     '';
 
-    # TODO: fix upstream value
     authelia_location = pkgs.writeText "nginx_authelia_location.conf" ''
         set $upstream_authelia http://${domains."2".dest_host}/api/verify;
 
@@ -265,6 +274,80 @@ in
             '';
           }
         );
+        "${domains."3".name}" = internalProxiedHostByDomain domains."3";
+        "${domains."4".name}" = internalProxiedHostByDomain domains."4";
+        "${domains."5".name}" = internalProxiedHostByDomain domains."5";
+
+        # netbird
+        "${domains.netbird.name}" = lib.recursiveUpdate (proxyHostByDestHost domains.netbird.dashboard) {
+          # This is necessary so that grpc connections do not get closed early
+          # see https://stackoverflow.com/a/67805465
+          extraConfig = ''
+            client_header_timeout 1d;
+            client_body_timeout 1d;
+          '';
+
+          locations = {
+            # Dashboard
+
+            # Signal WS
+            "/ws-proxy/signal" = {
+              proxyPass = "http://${domains.netbird.signal}";
+              proxyWebsockets = true;
+              extraConfig = ''
+                proxy_read_timeout 1d;
+              '';
+            };
+
+            # Signal gRPC
+            "/signalexchange.SignalExchange/" = {
+              extraConfig = ''
+                grpc_pass grpc://${domains.netbird.signal};
+                grpc_ssl_verify off;
+                grpc_read_timeout 1d;
+                grpc_send_timeout 1d;
+                grpc_socket_keepalive on;
+              '';
+            };
+
+            # Management API
+            "/api" = {
+              proxyPass = "http://${domains.netbird.management}";
+            };
+
+            # Management WS
+            "/ws-proxy/management" = {
+              proxyPass = "http://${domains.netbird.management}";
+              proxyWebsockets = true;
+            };
+
+            # Management grpc endpoint
+            "/management.ManagementService/" = {
+              extraConfig = ''
+                grpc_pass grpc://${domains.netbird.management};
+                grpc_ssl_verify off;
+                grpc_read_timeout 1d;
+                grpc_send_timeout 1d;
+                grpc_socket_keepalive on;
+              '';
+            };
+
+            # Relay
+            "/relay" = {
+              proxyPass = "http://${domains.netbird.relay}";
+              proxyWebsockets = true;
+            };
+          };
+        };
+        "${domains."7".name}" = (proxyHostByDestHost domains."7".dest_host);
+
+        "${domains."8".name}" = (lib.recursiveUpdate (internalProxiedHostByDomain domains."8") {
+          locations."/socket" = {
+            proxyPass = "http://${domains."8".dest_host}";
+            proxyWebsockets = true;
+          };
+        });
+
       };
   };
 }
