@@ -218,6 +218,13 @@ in
 
     appendHttpConfig = ''
       include ${snippets.hsts};
+
+      upstream netbird_dashboard {
+        server ${domains.netbird.dashboard};
+
+        # Improve performance by keeping some connections alive
+        keepalive 10;
+      }
     '';
 
     virtualHosts =
@@ -279,7 +286,7 @@ in
         "${domains."5".name}" = internalProxiedHostByDomain domains."5";
 
         # netbird
-        "${domains.netbird.name}" = lib.recursiveUpdate (proxyHostByDestHost domains.netbird.dashboard) {
+        "${domains.netbird.name}" = lib.recursiveUpdate (proxyHostByDestHost "netbird_dashboard") {
           # This is necessary so that grpc connections do not get closed early
           # see https://stackoverflow.com/a/67805465
           extraConfig = ''
@@ -289,6 +296,7 @@ in
 
           locations = {
             # Dashboard
+            # Using upstream declaration
 
             # Signal WS
             "/ws-proxy/signal" = {
