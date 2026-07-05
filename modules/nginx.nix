@@ -368,25 +368,26 @@ in
         "${domains."12".name}" = (
           lib.recursiveUpdate (internalProxiedHostByDomain domains."12") {
             locations."/api" = {
+              proxyPass = "http://${domains."12".dest_host}";
               proxyWebsockets = true;
             };
           }
         );
+
         "${domains."15".name}" = (
           lib.recursiveUpdate (proxyHostByDestHost domains."15".dest_host) {
-              locations."/" = {
-                proxyPass = "http://${domains."15".dest_host}";
-                extraConfig = ''
-                  include ${snippets.proxy};
+            locations."/" = {
+              extraConfig = ''
+                include ${snippets.proxy};
 
-                  # Ensure COPY and MOVE commands work
-                  set $dest $http_destination;
-                  if ($http_destination ~ "^https://${domains."15".name}/(?<path>(.+))") {
-                    set $dest /$path;
-                  }
-                  proxy_set_header Destination $dest;
-                '';
-              };
+                # Ensure COPY and MOVE commands work
+                set $dest $http_destination;
+                if ($http_destination ~ "^https://${domains."15".name}/(?<path>(.+))") {
+                  set $dest /$path;
+                }
+                proxy_set_header Destination $dest;
+              '';
+            };
           }
         );
       };
