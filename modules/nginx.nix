@@ -347,7 +347,13 @@ in
             };
           };
         };
-        "${domains."7".name}" = (proxyHostByDestHost domains."7".dest_host);
+        "${domains."7".name}" = (lib.recursiveUpdate (proxyHostByDestHost domains."7".dest_host) {
+          locations."/" = {
+            extraConfig = ''
+              include ${snippets.proxy};
+            '';
+          };
+        });
 
         "${domains."8".name}" = (lib.recursiveUpdate (internalProxiedHostByDomain domains."8") {
           locations."/socket" = {
