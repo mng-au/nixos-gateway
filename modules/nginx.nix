@@ -379,7 +379,20 @@ in
             };
           }
         );
-
+        "${domains."13".name}" = (lib.recursiveUpdate
+          (proxyHostByDestHost domains."13".dest_host)
+          {
+            extraConfig = ''
+              include ${snippets.internal_only};
+            '';
+            locations."/" = {
+              extraConfig = ''
+                include ${snippets.proxy};
+              '';
+            };
+          }
+        );
+        "${domains."14".name}" = (internalProxiedHostByDomain domains."14");
         "${domains."15".name}" = (
           lib.recursiveUpdate (proxyHostByDestHost domains."15".dest_host) {
             locations."/" = {
