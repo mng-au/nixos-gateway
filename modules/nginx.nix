@@ -184,10 +184,10 @@ in
     group = "acme";
   };
 
-  sops.secrets."vars/cloudflare_dns_api_key" = { }; # Must declare the secret first
+  sops.secrets."cloudflare/dns_api_key" = { }; # Must declare the secret first
   sops.templates."cloudflare.env" = {
     content = ''
-      CLOUDFLARE_DNS_API_TOKEN='${config.sops.placeholder."vars/cloudflare_dns_api_key"}'
+      CLOUDFLARE_DNS_API_TOKEN='${config.sops.placeholder."cloudflare/dns_api_key"}'
     '';
     owner = "acme";
   };
