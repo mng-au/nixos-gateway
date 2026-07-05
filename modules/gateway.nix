@@ -42,10 +42,6 @@
             iifname ${hostVars.ifLan1} oifname ${hostVars.ifInternet} accept;
             iifname ${hostVars.ifLan2} oifname ${hostVars.ifInternet} accept;
 
-            # Http, Https
-            ip daddr ${hostVars.ipNginx} tcp dport 80 accept;
-            ip daddr ${hostVars.ipNginx} tcp dport 443 accept;
-
             # Server2
             ip daddr ${hostVars.ipServer2} tcp dport 51250 accept;
             ip daddr ${hostVars.ipServer2} udp dport 51250 accept;
@@ -93,7 +89,7 @@
             # ct status invalid drop;
 
             # Allow Nginx
-            iifname { ${hostVars.ifLan2} } tcp dport { 80, 443 } accept;
+            iifname { ${hostVars.ifInternet}, ${hostVars.ifLan1}, ${hostVars.ifLan2} } tcp dport { 80, 443 } accept;
 
             # Allow SSH
             iifname != { ${hostVars.ifInternet} } tcp dport 22 accept; # Do not remove
@@ -117,10 +113,6 @@
             type nat hook prerouting priority 0; policy accept;
 
             # !! Note: Need to add forward accept rules too !!
-
-            # Redirect HTTP, HTTPS
-            iifname "${hostVars.ifInternet}" tcp dport { 80, 443 } dnat ip to ${hostVars.ipNginx};
-            iifname "${hostVars.ifLan1}" ip daddr ${hostVars.ipLan1} tcp dport { 80, 443 } dnat ip to ${hostVars.ipNginx};
 
             # Netbird Relay
             iifname "${hostVars.ifInternet}" udp dport { 33080 } dnat ip to ${hostVars.ipNginx};
