@@ -75,8 +75,7 @@
             iif lo accept;
 
             # dhcp
-            iifname != { ${hostVars.ifInternet} } udp dport 67 accept
-            iifname != { ${hostVars.ifInternet} } udp dport 68 accept
+            iifname != { ${hostVars.ifInternet} } udp dport { 67, 68 } accept
 
             # dns
             iifname != { ${hostVars.ifInternet} } udp dport 53 accept
