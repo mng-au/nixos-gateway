@@ -348,6 +348,39 @@ in
           };
         });
 
+        "${domains."9".name}" = (internalProxiedHostByDomain domains."9");
+        "${domains."10".name}" = (internalProxiedHostByDomain domains."10");
+        "${domains."11".name}" = (
+          lib.recursiveUpdate (internalProxiedHostByDomain domains."11") {
+            locations."/" = {
+              proxyWebsockets = true;
+            };
+          }
+        );
+        "${domains."12".name}" = (
+          lib.recursiveUpdate (internalProxiedHostByDomain domains."12") {
+            locations."/api" = {
+              proxyWebsockets = true;
+            };
+          }
+        );
+        "${domains."15".name}" = (
+          lib.recursiveUpdate (proxyHostByDestHost domains."15".dest_host) {
+              locations."/" = {
+                proxyPass = "http://${domains."15".dest_host}";
+                extraConfig = ''
+                  include ${snippets.proxy};
+
+                  # Ensure COPY and MOVE commands work
+                  set $dest $http_destination;
+                  if ($http_destination ~ "^https://${domains."15".name}/(?<path>(.+))") {
+                    set $dest /$path;
+                  }
+                  proxy_set_header Destination $dest;
+                '';
+              };
+          }
+        );
       };
   };
 }
