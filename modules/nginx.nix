@@ -368,14 +368,17 @@ in
             };
           }
         );
+
+        # Uptime-Kuma
         "${domains."12".name}" = (
-          lib.recursiveUpdate (internalProxiedHostByDomain domains."12") {
+          lib.recursiveUpdate (proxyHostByDestHost domains."12".dest_host) {
             locations."/api" = {
               proxyPass = "http://${domains."12".dest_host}";
               proxyWebsockets = true;
             };
           }
         );
+
         "${domains."13".name}" = (lib.recursiveUpdate
           (proxyHostByDestHost domains."13".dest_host)
           {
