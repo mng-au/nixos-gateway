@@ -238,6 +238,9 @@ in
 
         proxyHostByDestHost = host: sslHost {
           "/".proxyPass = "http://" + host + "/";
+          "/".extraConfig = ''
+              include ${snippets.proxy};
+          '';
         };
 
         internalProxiedHostByDomain = domain: {
@@ -274,13 +277,7 @@ in
           }
         );
         # authelia
-        "${domains."2".name}" = (
-          lib.recursiveUpdate (proxyHostByDestHost domains."2".dest_host) {
-            extraConfig = ''
-              include ${snippets.internal_only};
-            '';
-          }
-        );
+        "${domains."2".name}" = proxyHostByDestHost domains."2".dest_host;
         "${domains."3".name}" = internalProxiedHostByDomain domains."3";
         "${domains."4".name}" = internalProxiedHostByDomain domains."4";
         "${domains."5".name}" = internalProxiedHostByDomain domains."5";
@@ -385,11 +382,6 @@ in
             extraConfig = ''
               include ${snippets.internal_only};
             '';
-            locations."/" = {
-              extraConfig = ''
-                include ${snippets.proxy};
-              '';
-            };
           }
         );
         "${domains."14".name}" = (internalProxiedHostByDomain domains."14");
