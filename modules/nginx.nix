@@ -248,6 +248,20 @@ in
           useACMEHost = vars.acme_domain;
           extraConfig = ''
             include ${snippets.internal_only};
+          '';
+          locations."/" = {
+            proxyPass = "http://" + domain.dest_host + "/";
+            extraConfig = ''
+              include ${snippets.proxy};
+            '';
+          };
+        };
+
+        internalProxiedHostWithAuthByDomain = domain: {
+          forceSSL = true;
+          useACMEHost = vars.acme_domain;
+          extraConfig = ''
+            include ${snippets.internal_only};
             include ${snippets.authelia_location};
           '';
           locations."/" = {
@@ -269,7 +283,7 @@ in
           };
         };
         "${domains."1".name}" = (
-          lib.recursiveUpdate (internalProxiedHostByDomain domains."1") {
+          lib.recursiveUpdate (internalProxiedHostWithAuthByDomain domains."1") {
             locations."/api/graphql" = {
               proxyPass = "http://${domains."1".dest_host}";
               proxyWebsockets = true;
@@ -278,9 +292,9 @@ in
         );
         # authelia
         "${domains."2".name}" = proxyHostByDestHost domains."2".dest_host;
-        "${domains."3".name}" = internalProxiedHostByDomain domains."3";
-        "${domains."4".name}" = internalProxiedHostByDomain domains."4";
-        "${domains."5".name}" = internalProxiedHostByDomain domains."5";
+        "${domains."3".name}" = internalProxiedHostWithAuthByDomain domains."3";
+        "${domains."4".name}" = internalProxiedHostWithAuthByDomain domains."4";
+        "${domains."5".name}" = internalProxiedHostWithAuthByDomain domains."5";
 
         # netbird
         "${domains.netbird.name}" = lib.recursiveUpdate (proxyHostByDestHost "netbird_dashboard") {
@@ -353,14 +367,15 @@ in
         });
 
         "${domains."8".name}" = (lib.recursiveUpdate (internalProxiedHostByDomain domains."8") {
+        "${domains."8".name}" = (lib.recursiveUpdate (internalProxiedHostWithAuthByDomain domains."8") {
           locations."/socket" = {
             proxyPass = "http://${domains."8".dest_host}";
             proxyWebsockets = true;
           };
         });
 
-        "${domains."9".name}" = (internalProxiedHostByDomain domains."9");
-        "${domains."10".name}" = (internalProxiedHostByDomain domains."10");
+        "${domains."9".name}" = (internalProxiedHostWithAuthByDomain domains."9");
+        "${domains."10".name}" = (internalProxiedHostWithAuthByDomain domains."10");
         "${domains."11".name}" = (
           lib.recursiveUpdate (internalProxiedHostByDomain domains."11") {
             locations."/" = {
