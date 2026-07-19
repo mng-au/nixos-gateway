@@ -3,40 +3,36 @@
 let
   env = name: builtins.getEnv name;
 
-  domainEnv = index: {
+  getDomainByEnv = index: {
     name = env "NGINX_DOMAIN_${toString index}";
     dest_host = env "NGINX_DOMAIN_${toString index}_DEST_HOST";
   };
 
   domains = {
-    "1" = domainEnv 1;
-    "2" = domainEnv 2;
-    "3" = domainEnv 3;
-    "4" = domainEnv 4;
-    "5" = domainEnv 5;
-    "6" = domainEnv 6;
-    "7" = domainEnv 7;
-    "8" = domainEnv 8;
-    "9" = domainEnv 9;
-    "10" = domainEnv 10;
-    "11" = domainEnv 11;
-    "12" = domainEnv 12;
-    "13" = domainEnv 13;
-    "14" = domainEnv 14;
-    "15" = domainEnv 15;
+    "1" = getDomainByEnv 1;
 
+    authelia = getDomainByEnv "AUTHELIA";
+    forgejo = getDomainByEnv "FORGEJO";
+    filebrowser = getDomainByEnv "FILEBROWSER";
+    freshrss = getDomainByEnv "FRESHRSS";
+    grafana = getDomainByEnv "GRAFANA";
+    homepage = getDomainByEnv "HOMEPAGE";
+    jellyfin = getDomainByEnv "JELLYFIN";
+    kavita = getDomainByEnv "KAVITA";
+    kestra = getDomainByEnv "KESTRA";
+    keycloak = getDomainByEnv "KEYCLOAK";
+    komodo = getDomainByEnv "KOMODO";
     netbird = {
-      name = env "NGINX_DOMAIN_6";
-      dashboard = env "NGINX_DOMAIN_6_DASHBOARD";
-      signal = env "NGINX_DOMAIN_6_SIGNAL";
-      management = env "NGINX_DOMAIN_6_MANAGEMENT";
-      relay = env "NGINX_DOMAIN_6_RELAY";
+      name = env "NGINX_DOMAIN_NETBIRD";
+      dashboard_host = env "NGINX_DOMAIN_NETBIRD_DASHBOARD_HOST";
+      signal_host = env "NGINX_DOMAIN_NETBIRD_SIGNAL_HOST";
+      management_host = env "NGINX_DOMAIN_NETBIRD_MANAGEMENT_HOST";
+      relay_host = env "NGINX_DOMAIN_NETBIRD_RELAY_HOST";
     };
-  };
-
-  vars = {
-    acme_domain = env "ACME_DOMAIN";
-    acme_default_email = env "ACME_DEFAULT_EMAIL";
+    nocodb = getDomainByEnv "NOCODB";
+    vaultWarden = getDomainByEnv "VAULTWARDEN";
+    uptimeKuma = getDomainByEnv "UPTIMEKUMA";
+    webdav = getDomainByEnv "WEBDAV";
   };
 
   snippets = {
@@ -44,7 +40,7 @@ let
        # Add HSTS header with preloading to HTTPS requests.
        # Adding this header to HTTP requests is discouraged
        map $scheme $hsts_header {
-           https   "max-age=31536000; includeSubdomains; preload";
+           https   "max-age=31536000; includeSubDomains; preload";
        }
        add_header Strict-Transport-Security $hsts_header;
 
@@ -58,7 +54,7 @@ let
        add_header X-Frame-Options DENY;
 
        # Prevent injection of code in other mime types (XSS Attacks)
-       add_header X-Content-Type-Options nosniff;
+       add_header X-Content-Type-Options nosniff always;
 
        # This might create errors
        proxy_cookie_path / "/; secure; HttpOnly; SameSite=strict";
@@ -72,7 +68,7 @@ let
      proxy_set_header X-Forwarded-Host $host;
      proxy_set_header X-Forwarded-URI $request_uri;
      proxy_set_header X-Forwarded-Ssl on;
-     proxy_set_header X-Forwarded-For $remote_addr;
+     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
      proxy_set_header X-Real-IP $remote_addr;
 
      ## Basic Proxy Configuration
@@ -106,12 +102,12 @@ let
         allow  192.168.8.0/22;
         allow  100.64.0.0/10;
         allow  192.168.240.0/20; # docker
-        allow  172.0.0.0/8; # docker
+        allow  172.16.0.0/12; # docker
         deny   all;
     '';
 
     authelia_location = pkgs.writeText "nginx_authelia_location.conf" ''
-        set $upstream_authelia http://${domains."2".dest_host}/api/verify;
+        set $upstream_authelia http://${domains.authelia.dest_host}/api/verify;
 
         location /authelia {
           ## Essential Proxy Configuration
@@ -126,7 +122,7 @@ let
           proxy_set_header X-Forwarded-Proto $scheme;
           proxy_set_header X-Forwarded-Host $http_host;
           proxy_set_header X-Forwarded-Uri $request_uri;
-          proxy_set_header X-Forwarded-For $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header Content-Length "";
           proxy_set_header Connection "";
 
@@ -173,11 +169,248 @@ let
         proxy_set_header Remote-Email $email;
 
         ## If the subrequest returns 200 pass to the backend, if the subrequest returns 401 redirect to the portal.
-        error_page 401 =302 https://auth.${vars.acme_domain}/?rd=$target_url;
+        error_page 401 =302 https://${domains.authelia.name}/?rd=$target_url;
     '';
+  };
+
+  getDomainNames = builtins.map (entry: entry.value.name) (lib.attrsToList domains);
+
+  getSslHost = locations: {
+    inherit locations;
+
+    forceSSL = true;
+    useACMEHost = vars.acme_domain;
+  };
+
+  getProxyHostByDestHost = host: getSslHost {
+    "/".proxyPass = "http://" + host + "/";
+    "/".extraConfig = ''
+        include ${snippets.proxy};
+    '';
+  };
+
+  getInternalProxiedHostByDomain = domain: {
+    forceSSL = true;
+    useACMEHost = vars.acme_domain;
+    extraConfig = ''
+      include ${snippets.internal_only};
+    '';
+    locations."/" = {
+      proxyPass = "http://" + domain.dest_host + "/";
+      extraConfig = ''
+        include ${snippets.proxy};
+      '';
+    };
+  };
+
+  getInternalProxiedHostWithAuthByDomain = domain: {
+    forceSSL = true;
+    useACMEHost = vars.acme_domain;
+    extraConfig = ''
+      include ${snippets.internal_only};
+      include ${snippets.authelia_location};
+    '';
+    locations."/" = {
+      proxyPass = "http://" + domain.dest_host + "/";
+      extraConfig = ''
+        include ${snippets.proxy};
+        include ${snippets.authelia_authrequest};
+      '';
+    };
+  };
+
+  virtualHostFactories = {
+    authelia = domain: {
+      "${domain.name}" = getProxyHostByDestHost domain.dest_host;
+    };
+
+    filebrowser = domain: {
+      "${domain.name}" = getInternalProxiedHostWithAuthByDomain domain;
+    };
+
+    forgejo = domain: {
+      "${domain.name}" = getInternalProxiedHostWithAuthByDomain domain;
+    };
+
+    freshrss = domain: {
+      "${domain.name}" = getInternalProxiedHostWithAuthByDomain domain;
+    };
+
+    grafana = domain: {
+      "${domain.name}" = getInternalProxiedHostWithAuthByDomain domain;
+    };
+
+    homepage = domain: {
+      "${domain.name}" = getInternalProxiedHostWithAuthByDomain domain;
+    };
+
+    jellyfin = domain: {
+      "${domain.name}" = (lib.recursiveUpdate (getInternalProxiedHostWithAuthByDomain domain) {
+        locations."/socket" = {
+          proxyPass = "http://${domain.dest_host}";
+          proxyWebsockets = true;
+        };
+      });
+    };
+
+    keycloak = domain: {
+      "${domain.name}" = getProxyHostByDestHost domain.dest_host;
+    };
+
+    kavita = domain: {
+      "${domain.name}" = getInternalProxiedHostWithAuthByDomain domain;
+    };
+
+    kestra = domain: {
+      "${domain.name}" = getInternalProxiedHostWithAuthByDomain domain;
+    };
+
+    komodo = domain: {
+      "${domain.name}" = lib.recursiveUpdate (getInternalProxiedHostWithAuthByDomain domain) {
+        locations."/ws" = {
+          proxyPass = "http://${domain.dest_host}";
+          proxyWebsockets = true;
+        };
+      };
+    };
+
+    netbird = netbirdDomain: {
+      "${netbirdDomain.name}" = lib.recursiveUpdate (getProxyHostByDestHost netbirdDomain.dashboard_host) {
+          # This is necessary so that grpc connections do not get closed early
+          # see https://stackoverflow.com/a/67805465
+          extraConfig = ''
+            client_header_timeout 1d;
+            client_body_timeout 1d;
+          '';
+
+          locations = {
+            # Dashboard
+            # Using upstream declaration
+
+            # Signal WS
+            "/ws-proxy/signal" = {
+              proxyPass = "http://${netbirdDomain.signal_host}";
+              proxyWebsockets = true;
+              extraConfig = ''
+                proxy_read_timeout 1d;
+              '';
+            };
+
+            # Signal gRPC
+            "/signalexchange.SignalExchange/" = {
+              extraConfig = ''
+                grpc_pass grpc://${netbirdDomain.signal_host};
+                grpc_ssl_verify off;
+                grpc_read_timeout 1d;
+                grpc_send_timeout 1d;
+                grpc_socket_keepalive on;
+              '';
+            };
+
+            # Management API
+            "/api" = {
+              proxyPass = "http://${netbirdDomain.management_host}";
+            };
+
+            # Management WS
+            "/ws-proxy/management" = {
+              proxyPass = "http://${netbirdDomain.management_host}";
+              proxyWebsockets = true;
+            };
+
+            # Management grpc endpoint
+            "/management.ManagementService/" = {
+              extraConfig = ''
+                grpc_pass grpc://${netbirdDomain.management_host};
+                grpc_ssl_verify off;
+                grpc_read_timeout 1d;
+                grpc_send_timeout 1d;
+                grpc_socket_keepalive on;
+              '';
+            };
+
+            # Relay
+            "/relay" = {
+              proxyPass = "http://${netbirdDomain.relay_host}";
+              proxyWebsockets = true;
+            };
+          };
+        };
+    };
+
+    nocodb = domain: {
+      "${domain.name}" = (
+        lib.recursiveUpdate (getInternalProxiedHostByDomain domain) {
+          locations."/" = {
+            proxyWebsockets = true;
+          };
+        }
+      );
+    };
+
+    uptimeKuma = domain: {
+      "${domain.name}" = (
+        lib.recursiveUpdate (getProxyHostByDestHost domain.dest_host) {
+          locations."/api" = {
+            proxyPass = "http://${domain.dest_host}";
+            proxyWebsockets = true;
+          };
+        }
+      );
+    };
+
+    vaultWarden = domain: {
+      "${domain.name}" = (lib.recursiveUpdate
+        (getProxyHostByDestHost domain.dest_host)
+        {
+          extraConfig = ''
+            include ${snippets.internal_only};
+          '';
+        }
+      );
+    };
+
+    webdav = domain: {
+      "${domain.name}" = (
+        lib.recursiveUpdate (getProxyHostByDestHost domain.dest_host) {
+          locations."/" = {
+            extraConfig = ''
+              include ${snippets.proxy};
+
+              # Ensure COPY and MOVE commands work
+              set $dest $http_destination;
+              if ($http_destination ~ "^https://${domain.name}/(?<path>(.+))") {
+                set $dest /$path;
+              }
+              proxy_set_header Destination $dest;
+            '';
+          };
+        }
+      );
+    };
+
+    private_1 = domain: {
+      "${domain.name}" = (lib.recursiveUpdate (getInternalProxiedHostWithAuthByDomain domain) {
+        locations."/api/graphql" = {
+          proxyPass = "http://${domain.dest_host}";
+          proxyWebsockets = true;
+        };
+      });
+    };
+  };
+
+  vars = {
+    acme_domain = env "ACME_DOMAIN";
+    acme_default_email = env "ACME_DEFAULT_EMAIL";
   };
 in
 {
+  ## Add domains as localhost to /etc/hosts
+  networking.hosts = {
+    "127.0.0.1" = getDomainNames;
+  };
+
+  ## Settings fro LetsEncrypt SSL certificate
   users.groups.acme = { };
   users.users.acme = {
     isSystemUser = true;
@@ -205,6 +438,7 @@ in
     };
   };
 
+  ## Nginx settings
   # From https://wiki.nixos.org/wiki/Nginx#Hardened_setup_with_TLS_and_HSTS_preloading
   services.nginx = {
     enable = true;
@@ -220,7 +454,7 @@ in
       include ${snippets.hsts};
 
       upstream netbird_dashboard {
-        server ${domains.netbird.dashboard};
+        server ${domains.netbird.dashboard_host};
 
         # Improve performance by keeping some connections alive
         keepalive 10;
@@ -228,51 +462,6 @@ in
     '';
 
     virtualHosts =
-      let
-        sslHost = locations: {
-          inherit locations;
-
-          forceSSL = true;
-          useACMEHost = vars.acme_domain;
-        };
-
-        proxyHostByDestHost = host: sslHost {
-          "/".proxyPass = "http://" + host + "/";
-          "/".extraConfig = ''
-              include ${snippets.proxy};
-          '';
-        };
-
-        internalProxiedHostByDomain = domain: {
-          forceSSL = true;
-          useACMEHost = vars.acme_domain;
-          extraConfig = ''
-            include ${snippets.internal_only};
-          '';
-          locations."/" = {
-            proxyPass = "http://" + domain.dest_host + "/";
-            extraConfig = ''
-              include ${snippets.proxy};
-            '';
-          };
-        };
-
-        internalProxiedHostWithAuthByDomain = domain: {
-          forceSSL = true;
-          useACMEHost = vars.acme_domain;
-          extraConfig = ''
-            include ${snippets.internal_only};
-            include ${snippets.authelia_location};
-          '';
-          locations."/" = {
-            proxyPass = "http://" + domain.dest_host + "/";
-            extraConfig = ''
-              include ${snippets.proxy};
-              include ${snippets.authelia_authrequest};
-            '';
-          };
-        };
-      in
       {
         "_" = {
           default = true;
@@ -283,142 +472,29 @@ in
           };
         };
         "${domains."1".name}" = (
-          lib.recursiveUpdate (internalProxiedHostWithAuthByDomain domains."1") {
+          lib.recursiveUpdate (getInternalProxiedHostWithAuthByDomain domains."1") {
             locations."/api/graphql" = {
               proxyPass = "http://${domains."1".dest_host}";
               proxyWebsockets = true;
             };
           }
         );
-        # authelia
-        "${domains."2".name}" = proxyHostByDestHost domains."2".dest_host;
-        "${domains."3".name}" = internalProxiedHostWithAuthByDomain domains."3";
-        "${domains."4".name}" = internalProxiedHostWithAuthByDomain domains."4";
-        "${domains."5".name}" = internalProxiedHostWithAuthByDomain domains."5";
-
-        # netbird
-        "${domains.netbird.name}" = lib.recursiveUpdate (proxyHostByDestHost "netbird_dashboard") {
-          # This is necessary so that grpc connections do not get closed early
-          # see https://stackoverflow.com/a/67805465
-          extraConfig = ''
-            client_header_timeout 1d;
-            client_body_timeout 1d;
-          '';
-
-          locations = {
-            # Dashboard
-            # Using upstream declaration
-
-            # Signal WS
-            "/ws-proxy/signal" = {
-              proxyPass = "http://${domains.netbird.signal}";
-              proxyWebsockets = true;
-              extraConfig = ''
-                proxy_read_timeout 1d;
-              '';
-            };
-
-            # Signal gRPC
-            "/signalexchange.SignalExchange/" = {
-              extraConfig = ''
-                grpc_pass grpc://${domains.netbird.signal};
-                grpc_ssl_verify off;
-                grpc_read_timeout 1d;
-                grpc_send_timeout 1d;
-                grpc_socket_keepalive on;
-              '';
-            };
-
-            # Management API
-            "/api" = {
-              proxyPass = "http://${domains.netbird.management}";
-            };
-
-            # Management WS
-            "/ws-proxy/management" = {
-              proxyPass = "http://${domains.netbird.management}";
-              proxyWebsockets = true;
-            };
-
-            # Management grpc endpoint
-            "/management.ManagementService/" = {
-              extraConfig = ''
-                grpc_pass grpc://${domains.netbird.management};
-                grpc_ssl_verify off;
-                grpc_read_timeout 1d;
-                grpc_send_timeout 1d;
-                grpc_socket_keepalive on;
-              '';
-            };
-
-            # Relay
-            "/relay" = {
-              proxyPass = "http://${domains.netbird.relay}";
-              proxyWebsockets = true;
-            };
-          };
-        };
-        "${domains."7".name}" = (lib.recursiveUpdate (proxyHostByDestHost domains."7".dest_host) {
-          locations."/" = {
-            extraConfig = ''
-              include ${snippets.proxy};
-            '';
-          };
-        });
-
-        "${domains."8".name}" = (lib.recursiveUpdate (internalProxiedHostByDomain domains."8") {
-        "${domains."8".name}" = (lib.recursiveUpdate (internalProxiedHostWithAuthByDomain domains."8") {
-          locations."/socket" = {
-            proxyPass = "http://${domains."8".dest_host}";
-            proxyWebsockets = true;
-          };
-        });
-
-        "${domains."9".name}" = (internalProxiedHostWithAuthByDomain domains."9");
-        "${domains."10".name}" = (internalProxiedHostWithAuthByDomain domains."10");
-        "${domains."11".name}" = (
-          lib.recursiveUpdate (internalProxiedHostByDomain domains."11") {
-            locations."/" = {
-              proxyWebsockets = true;
-            };
-          }
-        );
-
-        # Uptime-Kuma
-        "${domains."12".name}" = (
-          lib.recursiveUpdate (proxyHostByDestHost domains."12".dest_host) {
-            locations."/api" = {
-              proxyPass = "http://${domains."12".dest_host}";
-              proxyWebsockets = true;
-            };
-          }
-        );
-
-        "${domains."13".name}" = (lib.recursiveUpdate
-          (proxyHostByDestHost domains."13".dest_host)
-          {
-            extraConfig = ''
-              include ${snippets.internal_only};
-            '';
-          }
-        );
-        "${domains."14".name}" = (internalProxiedHostByDomain domains."14");
-        "${domains."15".name}" = (
-          lib.recursiveUpdate (proxyHostByDestHost domains."15".dest_host) {
-            locations."/" = {
-              extraConfig = ''
-                include ${snippets.proxy};
-
-                # Ensure COPY and MOVE commands work
-                set $dest $http_destination;
-                if ($http_destination ~ "^https://${domains."15".name}/(?<path>(.+))") {
-                  set $dest /$path;
-                }
-                proxy_set_header Destination $dest;
-              '';
-            };
-          }
-        );
-      };
+      } //
+      virtualHostFactories.authelia domains.authelia //
+      virtualHostFactories.forgejo domains.forgejo //
+      virtualHostFactories.filebrowser domains.filebrowser //
+      virtualHostFactories.freshrss domains.freshrss //
+      virtualHostFactories.grafana domains.grafana //
+      virtualHostFactories.homepage domains.homepage //
+      virtualHostFactories.jellyfin domains.jellyfin //
+      virtualHostFactories.kavita domains.kavita //
+      virtualHostFactories.kestra domains.kestra //
+      virtualHostFactories.keycloak domains.keycloak //
+      virtualHostFactories.komodo domains.komodo //
+      virtualHostFactories.netbird domains.netbird //
+      virtualHostFactories.nocodb domains.nocodb //
+      virtualHostFactories.vaultWarden domains.vaultWarden //
+      virtualHostFactories.uptimeKuma domains.uptimeKuma //
+      virtualHostFactories.private_1 domains."1";
   };
 }
