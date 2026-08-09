@@ -245,7 +245,7 @@ let
     };
 
     jellyfin = domain: {
-      "${domain.name}" = (lib.recursiveUpdate (getInternalProxiedHostWithAuthByDomain domain) {
+      "${domain.name}" = (lib.recursiveUpdate (getInternalProxiedHostByDomain domain) {
         locations."/socket" = {
           proxyPass = "http://${domain.dest_host}";
           proxyWebsockets = true;
