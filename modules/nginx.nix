@@ -30,6 +30,7 @@ let
       relay_host = env "NGINX_DOMAIN_NETBIRD_RELAY_HOST";
     };
     nocodb = getDomainByEnv "NOCODB";
+    openwebui = getDomainByEnv "OPENWEBUI";
     vaultWarden = getDomainByEnv "VAULTWARDEN";
     uptimeKuma = getDomainByEnv "UPTIMEKUMA";
     webdav = getDomainByEnv "WEBDAV";
@@ -339,6 +340,16 @@ let
     };
 
     nocodb = domain: {
+      "${domain.name}" = (
+        lib.recursiveUpdate (getInternalProxiedHostByDomain domain) {
+          locations."/" = {
+            proxyWebsockets = true;
+          };
+        }
+      );
+    };
+
+    openwebui = domain: {
       "${domain.name}" = (
         lib.recursiveUpdate (getInternalProxiedHostByDomain domain) {
           locations."/" = {
