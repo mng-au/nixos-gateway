@@ -9,8 +9,13 @@
 
     sops-nix.url = "github:Mic92/sops-nix";       # For secrets
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";  # See https://github.com/mic92/sops-nix
+
+    netalertx = {
+      url = "github:netalertx/NetAlertX?dir=install/nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
-  outputs = inputs@{ self, nixpkgs, sops-nix, ... }: {
+  outputs = inputs@{ self, nixpkgs, sops-nix, vscode-server, netalertx, ... }: {
     # NOTE: 'nixos' is the default hostname
 
     # Gateway 2
@@ -29,6 +34,7 @@
         ./modules/danted.nix
         ./modules/squid.nix
         ./modules/nginx.nix
+        ./modules/netalertx.nix
       ];
 
       specialArgs = {
