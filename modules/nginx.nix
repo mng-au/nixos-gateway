@@ -18,10 +18,11 @@ let
     grafana = getDomainByEnv "GRAFANA";
     homepage = getDomainByEnv "HOMEPAGE";
     jellyfin = getDomainByEnv "JELLYFIN";
-    kavita = getDomainByEnv "KAVITA";
+    bookorbit = getDomainByEnv "BOOKORBIT";
     kestra = getDomainByEnv "KESTRA";
     keycloak = getDomainByEnv "KEYCLOAK";
     komodo = getDomainByEnv "KOMODO";
+    openwebui = getDomainByEnv "OPENWEBUI";
     netbird = {
       name = env "NGINX_DOMAIN_NETBIRD";
       dashboard_host = env "NGINX_DOMAIN_NETBIRD_DASHBOARD_HOST";
@@ -30,10 +31,10 @@ let
       relay_host = env "NGINX_DOMAIN_NETBIRD_RELAY_HOST";
     };
     nocodb = getDomainByEnv "NOCODB";
-    openwebui = getDomainByEnv "OPENWEBUI";
+    anythingllm = getDomainByEnv "ANYTHINGLLM";
     vaultWarden = getDomainByEnv "VAULTWARDEN";
     uptimeKuma = getDomainByEnv "UPTIMEKUMA";
-    webdav = getDomainByEnv "WEBDAV";
+    # webdav = getDomainByEnv "WEBDAV";
   };
 
   snippets = {
@@ -230,7 +231,7 @@ let
     };
 
     forgejo = domain: {
-      "${domain.name}" = getInternalProxiedHostWithAuthByDomain domain;
+      "${domain.name}" = getInternalProxiedHostByDomain domain;
     };
 
     freshrss = domain: {
@@ -258,8 +259,8 @@ let
       "${domain.name}" = getProxyHostByDestHost domain.dest_host;
     };
 
-    kavita = domain: {
-      "${domain.name}" = getInternalProxiedHostWithAuthByDomain domain;
+    bookorbit = domain: {
+      "${domain.name}" = getInternalProxiedHostByDomain domain;
     };
 
     kestra = domain: {
@@ -268,6 +269,15 @@ let
 
     komodo = domain: {
       "${domain.name}" = lib.recursiveUpdate (getInternalProxiedHostWithAuthByDomain domain) {
+        locations."/ws" = {
+          proxyPass = "http://${domain.dest_host}";
+          proxyWebsockets = true;
+        };
+      };
+    };
+
+    openwebui = domain: {
+      "${domain.name}" = lib.recursiveUpdate (getInternalProxiedHostByDomain domain) {
         locations."/ws" = {
           proxyPass = "http://${domain.dest_host}";
           proxyWebsockets = true;
@@ -349,7 +359,7 @@ let
       );
     };
 
-    openwebui = domain: {
+    anythingllm = domain: {
       "${domain.name}" = (
         lib.recursiveUpdate (getInternalProxiedHostByDomain domain) {
           locations."/" = {
@@ -381,24 +391,24 @@ let
       );
     };
 
-    webdav = domain: {
-      "${domain.name}" = (
-        lib.recursiveUpdate (getProxyHostByDestHost domain.dest_host) {
-          locations."/" = {
-            extraConfig = ''
-              include ${snippets.proxy};
-
-              # Ensure COPY and MOVE commands work
-              set $dest $http_destination;
-              if ($http_destination ~ "^https://${domain.name}/(?<path>(.+))") {
-                set $dest /$path;
-              }
-              proxy_set_header Destination $dest;
-            '';
-          };
-        }
-      );
-    };
+    # webdav = domain: {
+    #   "${domain.name}" = (
+    #     lib.recursiveUpdate (getProxyHostByDestHost domain.dest_host) {
+    #       locations."/" = {
+    #         extraConfig = ''
+    #           include ${snippets.proxy};
+    #
+    #          # Ensure COPY and MOVE commands work
+    #          set $dest $http_destination;
+    #          if ($http_destination ~ "^https://${domain.name}/(?<path>(.+))") {
+    #            set $dest /$path;
+    #          }
+    #          proxy_set_header Destination $dest;
+    #        '';
+    #      };
+    #    }
+    #  );
+    # };
 
     private_1 = domain: {
       "${domain.name}" = (lib.recursiveUpdate (getInternalProxiedHostWithAuthByDomain domain) {
@@ -498,12 +508,14 @@ in
       virtualHostFactories.grafana domains.grafana //
       virtualHostFactories.homepage domains.homepage //
       virtualHostFactories.jellyfin domains.jellyfin //
-      virtualHostFactories.kavita domains.kavita //
+      virtualHostFactories.bookorbit domains.bookorbit //
       virtualHostFactories.kestra domains.kestra //
       virtualHostFactories.keycloak domains.keycloak //
       virtualHostFactories.komodo domains.komodo //
+      virtualHostFactories.openwebui domains.openwebui //
       virtualHostFactories.netbird domains.netbird //
       virtualHostFactories.nocodb domains.nocodb //
+      virtualHostFactories.anythingllm domains.anythingllm //
       virtualHostFactories.vaultWarden domains.vaultWarden //
       virtualHostFactories.uptimeKuma domains.uptimeKuma //
       virtualHostFactories.private_1 domains."1";
