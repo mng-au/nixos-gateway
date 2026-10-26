@@ -35,6 +35,7 @@ let
     vaultWarden = getDomainByEnv "VAULTWARDEN";
     uptimeKuma = getDomainByEnv "UPTIMEKUMA";
     # webdav = getDomainByEnv "WEBDAV";
+    navidrome = getDomainByEnv "NAVIDROME";
   };
 
   snippets = {
@@ -75,6 +76,7 @@ let
 
      ## Basic Proxy Configuration
      client_body_buffer_size 128k;
+     client_max_body_size 500M;
      proxy_next_upstream error timeout invalid_header http_500 http_502 http_503; ## Timeout if the real server is dead.
      proxy_redirect  http://  $scheme://;
      proxy_cache_bypass $cookie_session;
@@ -260,7 +262,7 @@ let
     };
 
     bookorbit = domain: {
-      "${domain.name}" = getInternalProxiedHostByDomain domain;
+      "${domain.name}" = getProxyHostByDestHost domain.dest_host;
     };
 
     kestra = domain: {
@@ -391,6 +393,10 @@ let
       );
     };
 
+    navidrome = domain: {
+      "${domain.name}" = getInternalProxiedHostByDomain domain;
+    };
+
     # webdav = domain: {
     #   "${domain.name}" = (
     #     lib.recursiveUpdate (getProxyHostByDestHost domain.dest_host) {
@@ -518,6 +524,7 @@ in
       virtualHostFactories.anythingllm domains.anythingllm //
       virtualHostFactories.vaultWarden domains.vaultWarden //
       virtualHostFactories.uptimeKuma domains.uptimeKuma //
+      virtualHostFactories.navidrome domains.navidrome //
       virtualHostFactories.private_1 domains."1";
   };
 }
