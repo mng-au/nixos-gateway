@@ -30,6 +30,12 @@
       options = [ "subvol=nix" ];
     };
 
+  fileSystems."/data" =
+    { device = "/dev/disk/by-uuid/22a02262-04d5-4273-9d04-9e4fbec36531";
+      fsType = "btrfs";
+      options = [ "subvol=data" ];
+    };
+
   fileSystems."/boot" =
     { device = "/dev/disk/by-uuid/1438-A1EA";
       fsType = "vfat";
