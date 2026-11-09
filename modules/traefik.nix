@@ -15,7 +15,14 @@ let
     "AUTHELIA_DEST_HOST"
   ];
 
-  templateEnv = builtins.listToAttrs (map (name: { inherit name; value = env name; }) templateVars);
+  # templateEnv feeds every envsubst template below: the variables read from ./.env,
+  # merged with anything derived in Nix (here: the sops placeholder, which sops swaps
+  # for the secret at runtime, matching services.redis.servers."traefik".requirePass).
+  templateEnv =
+    builtins.listToAttrs (map (name: { inherit name; value = env name; }) templateVars)
+    // {
+      REDIS_PASSWORD_PLACEHOLDER = config.sops.placeholder."cloudflare/dns_api_key";
+    };
 
   missingTemplateVars = builtins.filter (name: templateEnv.${name} == "") templateVars;
 
@@ -29,6 +36,7 @@ let
 
   aoe_yaml = renderTemplate "aoe.yaml" ./traefik/aoe.yaml;
   authelia_yaml = renderTemplate "authelia.yaml" ./traefik/authelia.yaml;
+  static_config_yaml = renderTemplate "static_config.yaml" ./traefik/static_config.yaml;
 in {
   # Acme
   users.groups.acme = { };
@@ -59,11 +67,19 @@ in {
   };
 
   # Redis for Traefik Kop
+  sops.secrets."traefik/redis_secret" = {};
+
   services.redis.servers."traefik" = {
     enable = true;
     port = 6379;
     bind = "127.0.0.1 192.168.9.1";
-    requirePass = "password";
+    requirePass = config.sops.placeholder."cloudflare/dns_api_key";
+  };
+
+  # Traefik
+  services.traefik = {
+    enable = true;
+    staticConfigFile = static_config_yaml;
   };
 
   environment.etc."traefik/dynamic/authelia.yaml" = {
