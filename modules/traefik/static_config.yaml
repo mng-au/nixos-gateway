@@ -29,6 +29,4 @@ providers:
   redis:
     endpoints:
       - 127.0.0.1:6379
-    # Must match services.redis.servers."traefik".requirePass in modules/traefik.nix,
-    # which is set to the sops placeholder for cloudflare/dns_api_key.
-    password: '${REDIS_PASSWORD_PLACEHOLDER}'
+    password: '${TRAEFIK_REDIS_PASSWORD}'

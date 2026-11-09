@@ -5,6 +5,7 @@ let
   vars = {
     acme_domain = env "ACME_DOMAIN";
     acme_default_email = env "ACME_DEFAULT_EMAIL";
+    traefik_redis_password = env "TRAEFIK_REDIS_PASSWORD";
   };
 
   templateVars = [
@@ -13,6 +14,7 @@ let
     "INTERNAL_SUBNET_2"
     "INTERNAL_SUBNET_3"
     "AUTHELIA_DEST_HOST"
+    "TRAEFIK_REDIS_PASSWORD"
   ];
 
   # templateEnv feeds every envsubst template below: the variables read from ./.env,
@@ -67,13 +69,11 @@ in {
   };
 
   # Redis for Traefik Kop
-  sops.secrets."traefik/redis_secret" = {};
-
   services.redis.servers."traefik" = {
     enable = true;
     port = 6379;
     bind = "127.0.0.1 192.168.9.1";
-    requirePass = config.sops.placeholder."cloudflare/dns_api_key";
+    requirePass = "${vars.traefik_redis_password}";
   };
 
   # Traefik
