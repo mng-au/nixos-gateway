@@ -1,0 +1,6 @@
+tls:
+  certificates:
+    - certFile: /var/lib/acme/syd.themfor.me/fullchain.pem
+      keyFile: /var/lib/acme/syd.themfor.me/key.pem
+      stores:
+        - default

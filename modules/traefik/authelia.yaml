@@ -1,0 +1,32 @@
+http:
+  middlewares:
+    global-limit:
+      buffering:
+        # Maximum allowed response size in Bytes (e.g., 2MB)
+        maxResponseBodyBytes: 2000000
+        # Optional: Threshold to start buffering to disk instead of memory
+        # memResponseBodyBytes: 1048576
+
+    authelia:
+      forwardAuth:
+        address: 'http://${AUTHELIA_DEST_HOST}/api/authz/forward-auth'
+        ## The following commented line is for configuring the Authelia URL in the proxy. We strongly suggest this is
+        ## configured in the Session Cookies section of the Authelia configuration.
+        # address: 'http://authelia:9091/api/authz/forward-auth?authelia_url=https%3A%2F%2Fauth.example.com%2F'
+        trustForwardHeader: true
+        maxResponseBodySize: 8192
+        authResponseHeaders:
+          - 'Remote-User'
+          - 'Remote-Groups'
+          - 'Remote-Email'
+          - 'Remote-Name'
+    authelia-basic:
+      forwardAuth:
+        address: 'http://${AUTHELIA_DEST_HOST}/api/verify?auth=basic'
+        trustForwardHeader: true
+        maxResponseBodySize: 8192
+        authResponseHeaders:
+          - 'Remote-User'
+          - 'Remote-Groups'
+          - 'Remote-Email'
+          - 'Remote-Name'
