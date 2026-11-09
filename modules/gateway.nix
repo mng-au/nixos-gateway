@@ -59,8 +59,8 @@ in
             iifname ${hostVars.ifLan1} ip daddr ${hostVars.ipDesktop1} tcp dport 30059 accept;
 
             # Docker
-            iifname "br-*" oifname "br-*" accept
-            iifname ${ifDocker} oifname ${ifDocker} accept;
+            iifname { lo, ${ifDocker}, "br-*" } oifname "br-*" accept;
+            iifname { lo, ${ifDocker}, "br-*" } oifname ${ifDocker} accept;
           }
 
           # Allow all packets sent by the firewall
@@ -91,6 +91,10 @@ in
             # Drop bad packets
             # ct status invalid drop;
 
+            # Docker
+            iifname ${ifDocker} accept
+            iifname "br-*" accept
+
             # Allow Nginx
             iifname { ${hostVars.ifInternet}, ${hostVars.ifLan1}, ${hostVars.ifLan2} } tcp dport { 80, 443 } accept;
 
@@ -113,7 +117,7 @@ in
             iifname { ${hostVars.ifLan2} } tcp dport 8840 accept;
 
             # Traefik Redis
-            iifname { ${hostVars.ifLan2} } tcp dport 6379 accept;
+            iifname { lo, "br-*", ${hostVars.ifLan2} } tcp dport 6379 accept;
 
             # Traefik Dashboard
             iifname { ${hostVars.ifLan2} } tcp dport 8080 accept;
