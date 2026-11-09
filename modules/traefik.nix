@@ -45,6 +45,7 @@ in {
   users.users.acme = {
     isSystemUser = true;
     group = "acme";
+    extraGroups = [ "traefik" ];
   };
 
   sops.secrets."cloudflare/dns_api_key" = { }; # Must declare the secret first
@@ -96,10 +97,4 @@ in {
     source = ./traefik/certs.yaml;
   };
 
-  environment.etc."traefik/dynamic/aoe.yaml" = {
-    user = config.systemd.services.traefik.serviceConfig.User;
-    group = config.systemd.services.traefik.serviceConfig.Group;
-    mode = "600";
-    source = aoe_yaml;
-  };
 }
