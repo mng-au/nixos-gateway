@@ -1,0 +1,7 @@
+http:
+  routers:
+    aoe:
+      rule: "(ClientIP(`${INTERNAL_SUBNET_1}`) || ClientIP(`${INTERNAL_SUBNET_2}`) || ClientIP(`${INTERNAL_SUBNET_3}`)) && Host(`aoe.syd.themfor.me`)"
+      target: "http://${SERVER_2_DEST_IP}:8082"
+      middlewares:
+        - "authelia"

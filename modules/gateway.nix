@@ -1,5 +1,8 @@
 { config, pkgs, hostVars, ... }:
 
+let
+  ifDocker = "docker0";
+in
 {
   boot.kernel.sysctl = {
     # NAT
@@ -46,9 +49,6 @@
             ip daddr ${hostVars.ipServer2} tcp dport 51250 accept;
             ip daddr ${hostVars.ipServer2} udp dport 51250 accept;
 
-            # Netbird Relay
-            ip daddr ${hostVars.ipNginx} udp dport 33080 accept;
-
             # Route lan2 request to lan1
             iifname ${hostVars.ifLan2} oifname "${hostVars.ifLan1}" ip daddr ${hostVars.ipLan1Cidr} accept;
 
@@ -57,6 +57,10 @@
 
             # Forgejo SSH
             iifname ${hostVars.ifLan1} ip daddr ${hostVars.ipDesktop1} tcp dport 30059 accept;
+
+            # Docker
+            iifname { lo, ${ifDocker}, "br-*" } oifname "br-*" accept;
+            iifname { lo, ${ifDocker}, "br-*" } oifname ${ifDocker} accept;
           }
 
           # Allow all packets sent by the firewall
@@ -87,6 +91,10 @@
             # Drop bad packets
             # ct status invalid drop;
 
+            # Docker
+            iifname ${ifDocker} accept
+            iifname "br-*" accept
+
             # Allow Nginx
             iifname { ${hostVars.ifInternet}, ${hostVars.ifLan1}, ${hostVars.ifLan2} } tcp dport { 80, 443 } accept;
 
@@ -104,6 +112,18 @@
 
             # Squid
             iifname != { ${hostVars.ifInternet} } tcp dport 3128 accept;
+
+            # WatchYourLan
+            iifname { ${hostVars.ifLan2} } tcp dport 8840 accept;
+
+            # Traefik Redis
+            iifname { lo, "br-*", ${hostVars.ifLan2} } tcp dport 6379 accept;
+
+            # Traefik Dashboard
+            iifname { ${hostVars.ifLan2} } tcp dport 8080 accept;
+
+            # Netbird Relay
+            iifname { ${hostVars.ifInternet} } udp dport 33080 accept;
           }
         }
 
@@ -112,9 +132,6 @@
             type nat hook prerouting priority 0; policy accept;
 
             # !! Note: Need to add forward accept rules too !!
-
-            # Netbird Relay
-            iifname "${hostVars.ifInternet}" udp dport { 33080 } dnat ip to ${hostVars.ipNginx};
 
             # Server 2
             iifname "${hostVars.ifInternet}" tcp dport 51250 dnat ip to ${hostVars.ipServer2};
